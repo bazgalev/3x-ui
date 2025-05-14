@@ -1,0 +1,40 @@
+volumes:
+  xuipostgres:
+
+services:
+  xui:
+    env_file:
+      - .env
+    build:
+      context: .
+    container_name: 3x-ui
+    hostname: localhost
+    volumes:
+      - $PWD/db/:/etc/x-ui/
+      - $PWD/cert/:/root/cert/
+    environment:
+      XRAY_VMESS_AEAD_FORCED: "false"
+    tty: true
+    ports:
+      - "2053:2053"
+    restart: unless-stopped
+    depends_on:
+      xui-postgres:
+        condition: service_healthy
+  xui-postgres:
+    image: postgres:15.4-alpine
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d ${DB_NAME} -U ${DB_USER}" ]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    environment:
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - xuipostgres:/var/lib/postgresql/data
+    restart: on-failure
